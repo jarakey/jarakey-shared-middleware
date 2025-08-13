@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"jarakey/shared/types"
+	"github.com/jarakey/jarakey-shared-middleware/types"
 	"github.com/stretchr/testify/assert"
 )
 

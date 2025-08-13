@@ -9,7 +9,7 @@ import (
 	"math/big"
 	"time"
 
-	"jarakey/shared/types"
+	"github.com/jarakey/jarakey-shared-middleware/types"
 )
 
 // CryptoManager handles cryptographic operations
