@@ -1,4 +1,4 @@
-module jarakey/shared
+module github.com/jarakey/jarakey-shared-middleware
 
 go 1.21
 
