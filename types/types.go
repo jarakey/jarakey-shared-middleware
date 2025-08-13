@@ -2,6 +2,8 @@ package types
 
 import (
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // User represents a user in the system
@@ -143,6 +145,46 @@ type JWTClaims struct {
 	OrgID  string   `json:"org_id"`
 	Exp    int64    `json:"exp"`
 	Iat    int64    `json:"iat"`
+}
+
+// GetExpirationTime returns the expiration time as a NumericDate
+func (c JWTClaims) GetExpirationTime() (*jwt.NumericDate, error) {
+	if c.Exp == 0 {
+		return nil, nil
+	}
+	return jwt.NewNumericDate(time.Unix(c.Exp, 0)), nil
+}
+
+// GetIssuedAt returns the issued at time as a NumericDate
+func (c JWTClaims) GetIssuedAt() (*jwt.NumericDate, error) {
+	if c.Iat == 0 {
+		return nil, nil
+	}
+	return jwt.NewNumericDate(time.Unix(c.Iat, 0)), nil
+}
+
+// GetNotBefore returns the not before time as a NumericDate
+func (c JWTClaims) GetNotBefore() (*jwt.NumericDate, error) {
+	// NotBefore is not used in our claims, return nil
+	return nil, nil
+}
+
+// GetIssuer returns the issuer
+func (c JWTClaims) GetIssuer() (string, error) {
+	// Issuer is not used in our claims, return empty string
+	return "", nil
+}
+
+// GetSubject returns the subject
+func (c JWTClaims) GetSubject() (string, error) {
+	// Subject is not used in our claims, return empty string
+	return "", nil
+}
+
+// GetAudience returns the audience
+func (c JWTClaims) GetAudience() (jwt.ClaimStrings, error) {
+	// Audience is not used in our claims, return empty ClaimStrings
+	return jwt.ClaimStrings{}, nil
 }
 
 // Duration constants

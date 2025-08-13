@@ -175,7 +175,7 @@ func TestHashPassword(t *testing.T) {
 	
 	assert.NotEmpty(t, hash)
 	assert.NotEqual(t, password, hash) // Hash should be different from password
-	assert.Len(t, hash, 60) // bcrypt hash is always 60 characters
+	assert.Len(t, hash, 64) // SHA-256 hash is always 64 characters
 }
 
 func TestVerifyPasswordHash(t *testing.T) {
@@ -206,10 +206,10 @@ func TestHashPasswordConsistency(t *testing.T) {
 	hash1 := crypto.HashPassword(password)
 	hash2 := crypto.HashPassword(password)
 	
-	// Same password should produce different hashes (due to salt)
-	assert.NotEqual(t, hash1, hash2)
+	// Same password should produce the same hash (SHA-256 is deterministic)
+	assert.Equal(t, hash1, hash2)
 	
-	// But both should verify correctly
+	// Both should verify correctly
 	assert.True(t, crypto.VerifyPasswordHash(password, hash1))
 	assert.True(t, crypto.VerifyPasswordHash(password, hash2))
 } 

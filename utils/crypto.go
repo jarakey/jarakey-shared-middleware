@@ -84,6 +84,11 @@ func (c *CryptoManager) ValidateQRCodeData(qrData *types.QRCodeData) bool {
 
 // GenerateRandomString generates a random string of specified length
 func (c *CryptoManager) GenerateRandomString(length int) (string, error) {
+	// Validate input length
+	if length <= 0 {
+		return "", fmt.Errorf("length must be positive, got %d", length)
+	}
+	
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
 	for i := range b {

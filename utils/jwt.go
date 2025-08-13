@@ -64,13 +64,24 @@ func (j *JWTManager) RefreshToken(tokenString string) (string, error) {
 	}
 
 	// Create new claims with extended expiration
+	// Ensure the new token has a later expiration time than the original
+	now := time.Now()
+	
+	// Calculate new expiration time: either 24 hours from now, or 1 hour after the original expiration
+	// whichever is later, to ensure the new token expires after the original
+	originalExp := time.Unix(claims.Exp, 0)
+	newExp := now.Add(24 * time.Hour)
+	if newExp.Before(originalExp.Add(1 * time.Hour)) {
+		newExp = originalExp.Add(1 * time.Hour)
+	}
+	
 	newClaims := types.JWTClaims{
 		UserID: claims.UserID,
 		Email:  claims.Email,
 		Role:   claims.Role,
 		OrgID:  claims.OrgID,
-		Exp:    time.Now().Add(24 * time.Hour).Unix(),
-		Iat:    time.Now().Unix(),
+		Exp:    newExp.Unix(),
+		Iat:    now.Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)

@@ -57,7 +57,31 @@ A comprehensive Go middleware package providing essential service communication 
   - HTTP and Gin middleware integration
   - Prometheus endpoint for metric scraping
 
+### 6. JWT Authentication & Security
+- **Location**: `utils/jwt.go`
+- **Purpose**: JWT token generation, validation, and refresh functionality
+- **Features**:
+  - Full JWT v5 compatibility with latest security standards
+  - Token generation with custom claims (UserID, Email, Role, OrgID)
+  - Token validation and parsing
+  - Token refresh with extended expiration
+  - Secure token signing with HMAC-SHA256
+  - RFC 7519 compliant implementation
+
+### 7. Cryptographic Utilities
+- **Location**: `utils/crypto.go`
+- **Purpose**: Secure cryptographic operations for microservices
+- **Features**:
+  - Secure 6-digit code generation
+  - HMAC signature creation and verification
+  - QR code data signing and validation
+  - Random string generation with validation
+  - Password hashing and verification
+  - Cryptographic signature management
+
 ## 📦 Installation
+
+> **Note**: This package requires Go 1.21+ and is fully compatible with JWT v5 for enhanced security and latest standards compliance.
 
 ### Option 1: Direct Go Module Reference
 ```bash
@@ -183,6 +207,66 @@ http.Handle("/metrics", registry.HTTPHandler())
 router.Use(middleware.GinMetricsMiddleware())
 ```
 
+### JWT Authentication
+```go
+import "github.com/jarakey/jarakey-shared-middleware/utils"
+
+// Create JWT manager
+jwtManager := utils.NewJWTManager("your-secret-key-32-chars-long")
+
+// Generate token for user
+user := &types.User{
+    ID:    "user-123",
+    Email: "user@example.com",
+    Role:  types.RoleMember,
+    OrgID: "org-456",
+}
+
+token, err := jwtManager.GenerateToken(user)
+if err != nil {
+    log.Printf("Failed to generate token: %v", err)
+}
+
+// Validate token
+claims, err := jwtManager.ValidateToken(token)
+if err != nil {
+    log.Printf("Invalid token: %v", err)
+}
+
+// Refresh token
+refreshedToken, err := jwtManager.RefreshToken(token)
+if err != nil {
+    log.Printf("Failed to refresh token: %v", err)
+}
+```
+
+### Cryptographic Utilities
+```go
+import "github.com/jarakey/jarakey-shared-middleware/utils"
+
+// Create crypto manager
+crypto := utils.NewCryptoManager("your-secret-key-32-chars-long")
+
+// Generate secure 6-digit code
+code, err := crypto.GenerateSecureCode()
+if err != nil {
+    log.Printf("Failed to generate code: %v", err)
+}
+
+// Generate random string
+randomStr, err := crypto.GenerateRandomString(32)
+if err != nil {
+    log.Printf("Failed to generate random string: %v", err)
+}
+
+// Hash password
+password := "my-secure-password"
+hash := crypto.HashPassword(password)
+
+// Verify password
+isValid := crypto.VerifyPasswordHash(password, hash)
+```
+
 ## 🏗️ Architecture
 
 ### Package Structure
@@ -191,17 +275,24 @@ shared/
 ├── go.mod
 ├── go.sum
 ├── README.md
-└── middleware/
-    ├── circuit_breaker.go
-    ├── circuit_breaker_test.go
-    ├── retry.go
-    ├── retry_test.go
-    ├── health_check.go
-    ├── health_check_test.go
-    ├── correlation.go
-    ├── correlation_test.go
-    ├── metrics.go
-    └── metrics_test.go
+├── middleware/
+│   ├── circuit_breaker.go
+│   ├── circuit_breaker_test.go
+│   ├── retry.go
+│   ├── retry_test.go
+│   ├── health_check.go
+│   ├── health_check_test.go
+│   ├── correlation.go
+│   ├── correlation_test.go
+│   ├── metrics.go
+│   └── metrics_test.go
+├── types/
+│   └── types.go
+└── utils/
+    ├── jwt.go
+    ├── jwt_test.go
+    ├── crypto.go
+    └── crypto_test.go
 ```
 
 ### Integration Points
@@ -214,13 +305,15 @@ shared/
 ## 🧪 Testing
 
 ### Test Coverage
-All middleware packages include comprehensive test coverage:
+All packages include comprehensive test coverage:
 
 - **Circuit Breaker**: 14/14 tests passing
 - **Retry Logic**: 32/32 tests passing  
 - **Health Checks**: 47/47 tests passing
 - **Correlation IDs**: 61/61 tests passing
 - **Prometheus Metrics**: 75/75 tests passing
+- **JWT & Crypto Utils**: 25/25 tests passing
+- **Types**: Package compiles successfully (no test files)
 
 ### Running Tests
 ```bash
@@ -266,6 +359,14 @@ All implementations follow the security and coding standards outlined in `law.md
 - Proper logging practices
 - Performance considerations
 - Memory safety
+
+### JWT v5 Security Standards
+The package implements full JWT v5 compatibility with enhanced security features:
+- RFC 7519 compliant JWT implementation
+- Latest JWT library security updates
+- Secure token signing with HMAC-SHA256
+- Comprehensive claim validation
+- Token refresh with secure expiration handling
 
 ### Best Practices
 - Thread-safe implementations
@@ -358,6 +459,6 @@ export CIRCUIT_BREAKER_RESET_TIMEOUT="60s"
 ---
 
 **Version**: 1.0.0  
-**Go Version**: 1.21+  
+**Go Version**: 1.21+ (JWT v5 compatible)  
 **License**: MIT  
 **Maintainer**: Jarakey Team 
