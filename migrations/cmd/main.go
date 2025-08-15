@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"log"
-	"os"
 	"time"
 
 	"github.com/jarakey/jarakey-shared-middleware/migrations"
@@ -14,7 +13,7 @@ func main() {
 	// Parse command line flags
 	var (
 		command       = flag.String("command", "up", "Migration command: up, down, force, version, status")
-		databaseURL   = flag.String("database", "", "Database URL (overrides DATABASE_URL env var)")
+		databaseURL   = flag.String("database", "", "Database URL (overrides environment variables)")
 		migrationsPath = flag.String("path", "infrastructure/scripts", "Path to migration files")
 		timeout       = flag.Duration("timeout", 30*time.Second, "Migration timeout")
 		logLevel      = flag.String("log-level", "info", "Log level: debug, info, warn, error")
@@ -22,22 +21,31 @@ func main() {
 	)
 	flag.Parse()
 
-	// Set database URL from flag or environment variable
-	dbURL := *databaseURL
-	if dbURL == "" {
-		dbURL = os.Getenv("DATABASE_URL")
-	}
-
-	if dbURL == "" {
-		log.Fatal("❌ Database URL is required. Set DATABASE_URL environment variable or use -database flag")
+	// Handle validate command separately (no database connection needed)
+	if *command == "validate" {
+		log.Printf("🔍 Validating migration files...")
+		if err := migrations.ValidateMigrationFiles(*migrationsPath); err != nil {
+			log.Fatalf("❌ Validation failed: %v", err)
+		}
+		log.Printf("✅ Migration files are valid")
+		return
 	}
 
 	// Create migration configuration
-	config := &migrations.Config{
-		DatabaseURL:    dbURL,
-		MigrationsPath: *migrationsPath,
-		Timeout:        *timeout,
-		LogLevel:       *logLevel,
+	config := migrations.DefaultConfig()
+	
+	// Override with command line flags if provided
+	if *databaseURL != "" {
+		config.DatabaseURL = *databaseURL
+	}
+	if *migrationsPath != "" {
+		config.MigrationsPath = *migrationsPath
+	}
+	if *timeout > 0 {
+		config.Timeout = *timeout
+	}
+	if *logLevel != "" {
+		config.LogLevel = *logLevel
 	}
 
 	// Create migrator instance
@@ -48,7 +56,7 @@ func main() {
 	defer migrator.Close()
 
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
 	defer cancel()
 
 	// Execute command
@@ -98,14 +106,7 @@ func main() {
 		log.Printf("📊 Migration status:")
 		log.Printf("   Version: %d", version)
 		log.Printf("   Dirty: %t", dirty)
-		log.Printf("   Database: %s", migrations.MaskDatabaseURL(dbURL))
-
-	case "validate":
-		log.Printf("🔍 Validating migration files...")
-		if err := migrations.ValidateMigrationFiles(*migrationsPath); err != nil {
-			log.Fatalf("❌ Validation failed: %v", err)
-		}
-		log.Printf("✅ Migration files are valid")
+		log.Printf("   Database: %s", migrations.MaskDatabaseURL(config.DatabaseURL))
 
 	default:
 		log.Fatalf("❌ Unknown command: %s. Use: up, down, force, version, status, validate", *command)

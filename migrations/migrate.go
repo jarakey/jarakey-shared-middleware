@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
@@ -20,10 +21,44 @@ type Config struct {
 	LogLevel       string
 }
 
+// buildDatabaseURL constructs a database URL from individual environment variables
+func buildDatabaseURL() string {
+	// Try DATABASE_URL first
+	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		return dbURL
+	}
+
+	// Build from individual components
+	host := os.Getenv("DB_HOST")
+	port := os.Getenv("DB_PORT")
+	user := os.Getenv("DB_USER")
+	password := os.Getenv("DB_PASSWORD")
+	dbname := os.Getenv("DB_NAME")
+	sslmode := os.Getenv("DB_SSL_MODE")
+
+	// Set defaults if not provided
+	if host == "" {
+		host = "localhost"
+	}
+	if port == "" {
+		port = "5432"
+	}
+	if sslmode == "" {
+		sslmode = "require"
+	}
+
+	// Construct PostgreSQL connection string
+	if user != "" && password != "" && dbname != "" {
+		return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, password, host, port, dbname, sslmode)
+	}
+
+	return ""
+}
+
 // DefaultConfig returns default migration configuration
 func DefaultConfig() *Config {
 	return &Config{
-		DatabaseURL:    os.Getenv("DATABASE_URL"),
+		DatabaseURL:    buildDatabaseURL(),
 		MigrationsPath: "infrastructure/scripts",
 		Timeout:        30 * time.Second,
 		LogLevel:       "info",
@@ -44,7 +79,7 @@ func NewMigrator(config *Config) (*Migrator, error) {
 
 	// Validate configuration
 	if config.DatabaseURL == "" {
-		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
+		return nil, fmt.Errorf("database connection not configured. Please set either DATABASE_URL or individual DB_* environment variables (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_SSL_MODE)")
 	}
 
 	// Create migrator instance
