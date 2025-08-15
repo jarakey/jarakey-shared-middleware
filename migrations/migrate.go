@@ -94,7 +94,8 @@ func NewMigrator(config *Config) (*Migrator, error) {
 	}
 
 	// Create migrator instance with absolute path
-	migrationURL := fmt.Sprintf("file://%s", migrationsPath)
+	// golang-migrate expects the path to end with a trailing slash for directories
+	migrationURL := fmt.Sprintf("file://%s/", migrationsPath)
 	log.Printf("🔧 Creating migrator with URL: %s", migrationURL)
 	
 	m, err := migrate.New(
