@@ -158,7 +158,21 @@ func (m *Migrator) Up(ctx context.Context) error {
 
 	// Run migrations
 	if err := m.migrate.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to run migrations: %v", err)
+		// Check if it's a schema version conflict or dirty state
+		if err.Error() == "dirty database version -1. Fix and force version." || 
+		   err.Error() == "pq: column \"version\" does not exist in line 0: SELECT version, dirty FROM \"public\".\"schema_migrations\" LIMIT 1" {
+			log.Printf("⚠️  Database has migration state conflict. Attempting to force version...")
+			// Force the version to 0 to start fresh
+			if forceErr := m.migrate.Force(0); forceErr != nil {
+				return fmt.Errorf("failed to force migration version: %v", forceErr)
+			}
+			// Try running migrations again
+			if retryErr := m.migrate.Up(); retryErr != nil && retryErr != migrate.ErrNoChange {
+				return fmt.Errorf("failed to run migrations after force: %v", retryErr)
+			}
+		} else {
+			return fmt.Errorf("failed to run migrations: %v", err)
+		}
 	}
 
 	if err == migrate.ErrNoChange {
