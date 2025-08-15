@@ -82,9 +82,20 @@ func NewMigrator(config *Config) (*Migrator, error) {
 		return nil, fmt.Errorf("database connection not configured. Please set either DATABASE_URL or individual DB_* environment variables (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_SSL_MODE)")
 	}
 
-	// Create migrator instance
+	// Resolve migrations path to absolute path
+	migrationsPath, err := filepath.Abs(config.MigrationsPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve migrations path: %v", err)
+	}
+
+	// Validate migrations path exists
+	if _, err := os.Stat(migrationsPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("migrations path does not exist: %s", migrationsPath)
+	}
+
+	// Create migrator instance with absolute path
 	m, err := migrate.New(
-		fmt.Sprintf("file://%s", config.MigrationsPath),
+		fmt.Sprintf("file://%s", migrationsPath),
 		config.DatabaseURL,
 	)
 	if err != nil {
@@ -119,16 +130,23 @@ func NewMigrator(config *Config) (*Migrator, error) {
 // Up runs all pending migrations
 func (m *Migrator) Up(ctx context.Context) error {
 	log.Printf("🚀 Starting database migrations...")
-	log.Printf("📁 Migrations path: %s", m.config.MigrationsPath)
+	
+	// Resolve migrations path to absolute path
+	migrationsPath, err := filepath.Abs(m.config.MigrationsPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve migrations path: %v", err)
+	}
+	
+	log.Printf("📁 Migrations path: %s", migrationsPath)
 	log.Printf("🔗 Database: %s", maskDatabaseURL(m.config.DatabaseURL))
 
 	// Check if migrations path exists
-	if _, err := os.Stat(m.config.MigrationsPath); os.IsNotExist(err) {
-		return fmt.Errorf("migrations path does not exist: %s", m.config.MigrationsPath)
+	if _, err := os.Stat(migrationsPath); os.IsNotExist(err) {
+		return fmt.Errorf("migrations path does not exist: %s", migrationsPath)
 	}
 
 	// List migration files
-	files, err := m.listMigrationFiles()
+	files, err := m.listMigrationFiles(migrationsPath)
 	if err != nil {
 		return fmt.Errorf("failed to list migration files: %v", err)
 	}
@@ -192,10 +210,10 @@ func (m *Migrator) Close() error {
 }
 
 // listMigrationFiles lists all SQL migration files in the migrations path
-func (m *Migrator) listMigrationFiles() ([]string, error) {
+func (m *Migrator) listMigrationFiles(migrationsPath string) ([]string, error) {
 	var files []string
 
-	err := filepath.WalkDir(m.config.MigrationsPath, func(path string, info os.DirEntry, err error) error {
+	err := filepath.WalkDir(migrationsPath, func(path string, info os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
