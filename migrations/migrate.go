@@ -99,7 +99,24 @@ func NewMigrator(config *Config) (*Migrator, error) {
 		config.DatabaseURL,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create migrator: %v", err)
+		// Check if it's a "no schema" error
+		if strings.Contains(err.Error(), "no schema") || strings.Contains(err.Error(), "schema") {
+			log.Printf("⚠️  Database schema missing, attempting to create...")
+			// Try to create the schema first
+			if createErr := m.createSchemaIfNotExists(config.DatabaseURL); createErr != nil {
+				return nil, fmt.Errorf("failed to create schema: %v", createErr)
+			}
+			// Try creating the migrator again
+			m, err = migrate.New(
+				fmt.Sprintf("file://%s", migrationsPath),
+				config.DatabaseURL,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create migrator after schema creation: %v", err)
+			}
+		} else {
+			return nil, fmt.Errorf("failed to create migrator: %v", err)
+		}
 	}
 
 	// Set timeout
