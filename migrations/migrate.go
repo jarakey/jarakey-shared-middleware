@@ -94,8 +94,11 @@ func NewMigrator(config *Config) (*Migrator, error) {
 	}
 
 	// Create migrator instance with absolute path
+	migrationURL := fmt.Sprintf("file://%s", migrationsPath)
+	log.Printf("🔧 Creating migrator with URL: %s", migrationURL)
+	
 	m, err := migrate.New(
-		fmt.Sprintf("file://%s", migrationsPath),
+		migrationURL,
 		config.DatabaseURL,
 	)
 	if err != nil {
@@ -121,6 +124,11 @@ func NewMigrator(config *Config) (*Migrator, error) {
 		m.Log = &infoLogger{}
 	}
 
+	// Validate that the migrator can see the migration files
+	if err := validateMigratorFiles(m, migrationsPath); err != nil {
+		log.Printf("⚠️  Warning: Migrator validation failed: %v", err)
+	}
+	
 	return &Migrator{
 		config:  config,
 		migrate: m,
@@ -145,33 +153,13 @@ func (m *Migrator) dropAndRecreateSchemaMigrations() error {
 func (m *Migrator) Up(ctx context.Context) error {
 	log.Printf("🚀 Starting database migrations...")
 	
-	// Resolve migrations path to absolute path
-	migrationsPath, err := filepath.Abs(m.config.MigrationsPath)
-	if err != nil {
-		return fmt.Errorf("failed to resolve migrations path: %v", err)
-	}
-	
-	log.Printf("📁 Migrations path: %s", migrationsPath)
+	// Use the already-configured migrator instance
+	log.Printf("📁 Using configured migrations path")
 	log.Printf("🔗 Database: %s", maskDatabaseURL(m.config.DatabaseURL))
 
-	// Check if migrations path exists
-	if _, err := os.Stat(migrationsPath); os.IsNotExist(err) {
-		return fmt.Errorf("migrations path does not exist: %s", migrationsPath)
-	}
-
-	// List migration files
-	files, err := m.listMigrationFiles(migrationsPath)
-	if err != nil {
-		return fmt.Errorf("failed to list migration files: %v", err)
-	}
-
-	log.Printf("📋 Found %d migration files", len(files))
-	for _, file := range files {
-		log.Printf("   📄 %s", filepath.Base(file))
-	}
-
-	// Run migrations
-	if err := m.migrate.Up(); err != nil && err != migrate.ErrNoChange {
+	// Run migrations using the configured migrator
+	err := m.migrate.Up()
+	if err != nil && err != migrate.ErrNoChange {
 		// Check if it's a schema version conflict or dirty state
 		if err.Error() == "dirty database version -1. Fix and force version." || 
 		   err.Error() == "pq: column \"version\" does not exist in line 0: SELECT version, dirty FROM \"public\".\"schema_migrations\" LIMIT 1" {
@@ -357,4 +345,26 @@ func GetMigrationStatus(databaseURL string) (uint, bool, error) {
 // MaskDatabaseURL masks sensitive information in database URL for logging
 func MaskDatabaseURL(url string) string {
 	return maskDatabaseURL(url)
+}
+
+// validateMigratorFiles validates that the migrator can see the migration files
+func validateMigratorFiles(m *migrate.Migrate, migrationsPath string) error {
+	log.Printf("🔍 Validating migrator can see files in: %s", migrationsPath)
+	
+	// List files that the migrator should be able to see
+	files, err := filepath.Glob(filepath.Join(migrationsPath, "*.sql"))
+	if err != nil {
+		return fmt.Errorf("failed to glob migration files: %v", err)
+	}
+	
+	if len(files) == 0 {
+		return fmt.Errorf("no SQL migration files found in %s", migrationsPath)
+	}
+	
+	log.Printf("📋 Migrator validation: Found %d SQL files", len(files))
+	for _, file := range files {
+		log.Printf("   📄 %s", filepath.Base(file))
+	}
+	
+	return nil
 }
