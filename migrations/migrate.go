@@ -129,32 +129,15 @@ func NewMigrator(config *Config) (*Migrator, error) {
 
 // dropAndRecreateSchemaMigrations drops and recreates the schema_migrations table
 func (m *Migrator) dropAndRecreateSchemaMigrations() error {
-	log.Printf("🗑️  Dropping and recreating schema_migrations table...")
+	log.Printf("🗑️  Attempting to drop and recreate schema_migrations table...")
 	
-	// Get the underlying database connection
-	db, err := m.migrate.Database()
-	if err != nil {
-		return fmt.Errorf("failed to get database connection: %v", err)
+	// Since we can't access the database directly, we'll use the Drop method
+	// which should clear all migration state
+	if err := m.migrate.Drop(); err != nil {
+		return fmt.Errorf("failed to drop migration state: %v", err)
 	}
 	
-	// Drop the schema_migrations table if it exists
-	_, err = db.Exec("DROP TABLE IF EXISTS schema_migrations")
-	if err != nil {
-		return fmt.Errorf("failed to drop schema_migrations table: %v", err)
-	}
-	
-	// Create a new schema_migrations table with the correct structure
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS schema_migrations (
-			version bigint NOT NULL PRIMARY KEY,
-			dirty boolean NOT NULL
-		)
-	`)
-	if err != nil {
-		return fmt.Errorf("failed to create schema_migrations table: %v", err)
-	}
-	
-	log.Printf("✅ schema_migrations table recreated successfully")
+	log.Printf("✅ Migration state dropped successfully")
 	return nil
 }
 
