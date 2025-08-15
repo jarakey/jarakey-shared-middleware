@@ -2,7 +2,7 @@ module github.com/jarakey/jarakey-shared-middleware
 
 go 1.23
 
-// Version v1.1.6 - Fixed compilation errors and enhanced CI workflow
+// Version v1.1.7 - Fixed all compilation errors and ready for production
 
 require (
 	github.com/gin-gonic/gin v1.9.1
