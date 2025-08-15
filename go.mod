@@ -2,6 +2,8 @@ module github.com/jarakey/jarakey-shared-middleware
 
 go 1.23
 
+// Version v1.1.2 - Path resolution fixes for migration tools
+
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
