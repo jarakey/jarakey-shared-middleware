@@ -2,7 +2,7 @@ module github.com/jarakey/jarakey-shared-middleware
 
 go 1.23
 
-// Version v1.1.2 - Path resolution fixes for migration tools
+// Version v1.1.3 - Schema conflict handling and improved error recovery
 
 require (
 	github.com/gin-gonic/gin v1.9.1
