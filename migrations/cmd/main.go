@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"path/filepath"
 	"time"
 
 	"github.com/jarakey/jarakey-shared-middleware/migrations"
@@ -46,6 +47,16 @@ func main() {
 	}
 	if *logLevel != "" {
 		config.LogLevel = *logLevel
+	}
+	
+	// Ensure migrations path is absolute
+	if !filepath.IsAbs(config.MigrationsPath) {
+		absPath, err := filepath.Abs(config.MigrationsPath)
+		if err != nil {
+			log.Fatalf("❌ Failed to resolve migrations path: %v", err)
+		}
+		config.MigrationsPath = absPath
+		log.Printf("📁 Resolved migrations path to: %s", config.MigrationsPath)
 	}
 
 	// Create migrator instance

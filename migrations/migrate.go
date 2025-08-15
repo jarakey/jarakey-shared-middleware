@@ -127,6 +127,37 @@ func NewMigrator(config *Config) (*Migrator, error) {
 	}, nil
 }
 
+// dropAndRecreateSchemaMigrations drops and recreates the schema_migrations table
+func (m *Migrator) dropAndRecreateSchemaMigrations() error {
+	log.Printf("🗑️  Dropping and recreating schema_migrations table...")
+	
+	// Get the underlying database connection
+	db, err := m.migrate.Database()
+	if err != nil {
+		return fmt.Errorf("failed to get database connection: %v", err)
+	}
+	
+	// Drop the schema_migrations table if it exists
+	_, err = db.Exec("DROP TABLE IF EXISTS schema_migrations")
+	if err != nil {
+		return fmt.Errorf("failed to drop schema_migrations table: %v", err)
+	}
+	
+	// Create a new schema_migrations table with the correct structure
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version bigint NOT NULL PRIMARY KEY,
+			dirty boolean NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create schema_migrations table: %v", err)
+	}
+	
+	log.Printf("✅ schema_migrations table recreated successfully")
+	return nil
+}
+
 // Up runs all pending migrations
 func (m *Migrator) Up(ctx context.Context) error {
 	log.Printf("🚀 Starting database migrations...")
@@ -164,11 +195,20 @@ func (m *Migrator) Up(ctx context.Context) error {
 			log.Printf("⚠️  Database has migration state conflict. Attempting to force version...")
 			// Force the version to 0 to start fresh
 			if forceErr := m.migrate.Force(0); forceErr != nil {
-				return fmt.Errorf("failed to force migration version: %v", forceErr)
-			}
-			// Try running migrations again
-			if retryErr := m.migrate.Up(); retryErr != nil && retryErr != migrate.ErrNoChange {
-				return fmt.Errorf("failed to run migrations after force: %v", retryErr)
+				log.Printf("⚠️  Force failed, attempting to drop and recreate schema_migrations table...")
+				// If force fails, try to drop and recreate the schema_migrations table
+				if dropErr := m.dropAndRecreateSchemaMigrations(); dropErr != nil {
+					return fmt.Errorf("failed to reset migration state: %v", dropErr)
+				}
+				// Try running migrations again
+				if retryErr := m.migrate.Up(); retryErr != nil && retryErr != migrate.ErrNoChange {
+					return fmt.Errorf("failed to run migrations after reset: %v", retryErr)
+				}
+			} else {
+				// Try running migrations again after successful force
+				if retryErr := m.migrate.Up(); retryErr != nil && retryErr != migrate.ErrNoChange {
+					return fmt.Errorf("failed to run migrations after force: %v", retryErr)
+				}
 			}
 		} else {
 			return fmt.Errorf("failed to run migrations: %v", err)
