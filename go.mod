@@ -2,7 +2,7 @@ module github.com/jarakey/jarakey-shared-middleware
 
 go 1.23
 
-// Version v1.1.5 - Enhanced error handling and migration state recovery
+// Version v1.1.6 - Fixed compilation errors and enhanced CI workflow
 
 require (
 	github.com/gin-gonic/gin v1.9.1
