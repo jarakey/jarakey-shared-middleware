@@ -2,7 +2,7 @@ module github.com/jarakey/jarakey-shared-middleware
 
 go 1.23
 
-// Version v1.2.0 - Simplified migration tool with explicit path arguments
+// Version v1.2.1 - Comprehensive test coverage for all packages
 
 require (
 	github.com/gin-gonic/gin v1.9.1
