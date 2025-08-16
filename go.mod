@@ -2,7 +2,7 @@ module github.com/jarakey/jarakey-shared-middleware
 
 go 1.23
 
-// Version v1.1.9 - Fixed golang-migrate URL format (added trailing slash)
+// Version v1.1.10 - Enhanced golang-migrate URL format handling and debugging
 
 require (
 	github.com/gin-gonic/gin v1.9.1

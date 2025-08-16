@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -87,23 +88,64 @@ func NewMigrator(config *Config) (*Migrator, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve migrations path: %v", err)
 	}
+	
+	// Fix common path issues with extra slashes
+	migrationsPath = fixPathSlashes(migrationsPath)
+	log.Printf("🔧 Resolved migrations path: %s", migrationsPath)
 
 	// Validate migrations path exists
 	if _, err := os.Stat(migrationsPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("migrations path does not exist: %s", migrationsPath)
 	}
+	
+	// List files in the migrations path for debugging
+	files, err := os.ReadDir(migrationsPath)
+	if err != nil {
+		log.Printf("⚠️  Warning: Could not read migrations directory: %v", err)
+	} else {
+		log.Printf("📁 Found %d items in migrations directory: %s", len(files), migrationsPath)
+		for _, file := range files {
+			log.Printf("   📄 %s (dir: %t)", file.Name(), file.IsDir())
+		}
+	}
 
 	// Create migrator instance with absolute path
-	// golang-migrate expects the path to end with a trailing slash for directories
+	// Try different URL formats for golang-migrate compatibility
+	var m *migrate.Migrate
+	
+	// First try with file:// prefix and trailing slash
 	migrationURL := fmt.Sprintf("file://%s/", migrationsPath)
 	log.Printf("🔧 Creating migrator with URL: %s", migrationURL)
+	log.Printf("🔍 URL breakdown - Protocol: file://, Path: %s/, Full: %s", migrationsPath, migrationURL)
 	
-	m, err := migrate.New(
+	m, err = migrate.New(
 		migrationURL,
 		config.DatabaseURL,
 	)
+	
+	// If that fails, try without file:// prefix
 	if err != nil {
-		return nil, fmt.Errorf("failed to create migrator: %v", err)
+		log.Printf("⚠️  File URL format failed (%v), trying absolute path: %s", err, migrationsPath)
+		m, err = migrate.New(
+			migrationsPath,
+			config.DatabaseURL,
+		)
+	}
+	
+	// If that also fails, try with just the directory name (relative to working directory)
+	if err != nil {
+		log.Printf("⚠️  Absolute path failed (%v), trying relative path", err)
+		// Extract just the directory name from the path
+		dirName := filepath.Base(migrationsPath)
+		log.Printf("🔧 Trying relative path: %s", dirName)
+		m, err = migrate.New(
+			dirName,
+			config.DatabaseURL,
+		)
+	}
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to create migrator with all URL formats: %v", err)
 	}
 
 	// Set timeout
@@ -368,4 +410,44 @@ func validateMigratorFiles(m *migrate.Migrate, migrationsPath string) error {
 	}
 	
 	return nil
+}
+
+// fixPathSlashes fixes common path issues with extra slashes
+func fixPathSlashes(path string) string {
+	// Remove leading triple slashes (///) -> single slash (/)
+	if strings.HasPrefix(path, "///") {
+		path = "/" + strings.TrimPrefix(path, "///")
+		log.Printf("🔧 Fixed leading triple slashes: %s", path)
+	}
+	
+	// Remove leading double slashes (//) -> single slash (/)
+	if strings.HasPrefix(path, "//") && !strings.HasPrefix(path, "///") {
+		path = "/" + strings.TrimPrefix(path, "//")
+		log.Printf("🔧 Fixed leading double slashes: %s", path)
+	}
+	
+	// Remove trailing double slashes (//) -> single slash (/)
+	if strings.HasSuffix(path, "//") {
+		path = strings.TrimSuffix(path, "//") + "/"
+		log.Printf("🔧 Fixed trailing double slashes: %s", path)
+	}
+	
+	// Remove trailing single slash if it's not the root path
+	if strings.HasSuffix(path, "/") && path != "/" && len(path) > 1 {
+		// Check if the path without trailing slash exists
+		pathWithoutSlash := strings.TrimSuffix(path, "/")
+		if _, err := os.Stat(pathWithoutSlash); err == nil {
+			path = pathWithoutSlash
+			log.Printf("🔧 Removed unnecessary trailing slash: %s", path)
+		}
+	}
+	
+	// Normalize any remaining double slashes in the middle of the path
+	normalized := filepath.Clean(path)
+	if normalized != path {
+		log.Printf("🔧 Normalized path: %s -> %s", path, normalized)
+		path = normalized
+	}
+	
+	return path
 }
