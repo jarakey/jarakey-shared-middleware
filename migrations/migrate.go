@@ -139,33 +139,47 @@ func NewMigrator(config *Config) (*Migrator, error) {
 	// Try different URL formats for golang-migrate compatibility
 	var m *migrate.Migrate
 	
-	// First try with file:// prefix and trailing slash
-	migrationURL := fmt.Sprintf("file://%s/", migrationsPath)
-	log.Printf("🔧 Creating migrator with URL: %s", migrationURL)
-	log.Printf("🔍 URL breakdown - Protocol: file://, Path: %s/, Full: %s", migrationsPath, migrationURL)
+	// First try with relative path from working directory
+	// golang-migrate expects relative paths for file:// protocol
+	workingDir, _ := os.Getwd()
+	relativePath := migrationsPath
+	if filepath.IsAbs(migrationsPath) {
+		// Convert absolute path to relative path from working directory
+		if strings.HasPrefix(migrationsPath, workingDir) {
+			relativePath = strings.TrimPrefix(migrationsPath, workingDir)
+			relativePath = strings.TrimPrefix(relativePath, "/")
+		} else {
+			// If path is not under working directory, use just the directory name
+			relativePath = filepath.Base(migrationsPath)
+		}
+	}
+	
+	// Try with relative path first (most reliable)
+	migrationURL := fmt.Sprintf("file://%s", relativePath)
+	log.Printf("🔧 Creating migrator with relative URL: %s", migrationURL)
+	log.Printf("🔍 URL breakdown - Protocol: file://, Path: %s, Working Dir: %s", relativePath, workingDir)
 	
 	m, err = migrate.New(
 		migrationURL,
 		config.DatabaseURL,
 	)
 	
-	// If that fails, try without file:// prefix
+	// If that fails, try with absolute path
 	if err != nil {
-		log.Printf("⚠️  File URL format failed (%v), trying absolute path: %s", err, migrationsPath)
+		log.Printf("⚠️  Relative path failed (%v), trying absolute path: %s", err, migrationsPath)
 		m, err = migrate.New(
 			migrationsPath,
 			config.DatabaseURL,
 		)
 	}
 	
-	// If that also fails, try with just the directory name (relative to working directory)
+	// If that also fails, try with file:// and absolute path
 	if err != nil {
-		log.Printf("⚠️  Absolute path failed (%v), trying relative path", err)
-		// Extract just the directory name from the path
-		dirName := filepath.Base(migrationsPath)
-		log.Printf("🔧 Trying relative path: %s", dirName)
+		log.Printf("⚠️  Absolute path failed (%v), trying file:// with absolute path", err)
+		fileURL := fmt.Sprintf("file://%s", migrationsPath)
+		log.Printf("🔧 Trying file:// URL: %s", fileURL)
 		m, err = migrate.New(
-			dirName,
+			fileURL,
 			config.DatabaseURL,
 		)
 	}
