@@ -136,46 +136,45 @@ func NewMigrator(config *Config) (*Migrator, error) {
 	}
 
 	// Create migrator instance with absolute path
-	// Try different URL formats for golang-migrate compatibility
+	// Try different approaches to avoid golang-migrate file reading issues
 	var m *migrate.Migrate
 	
-	// First try with relative path from working directory
-	// golang-migrate expects relative paths for file:// protocol
-	workingDir, _ := os.Getwd()
-	relativePath := migrationsPath
-	if filepath.IsAbs(migrationsPath) {
-		// Convert absolute path to relative path from working directory
-		if strings.HasPrefix(migrationsPath, workingDir) {
-			relativePath = strings.TrimPrefix(migrationsPath, workingDir)
-			relativePath = strings.TrimPrefix(relativePath, "/")
-		} else {
-			// If path is not under working directory, use just the directory name
-			relativePath = filepath.Base(migrationsPath)
-		}
-	}
-	
-	// Try with relative path first (most reliable)
-	migrationURL := fmt.Sprintf("file://%s", relativePath)
-	log.Printf("🔧 Creating migrator with relative URL: %s", migrationURL)
-	log.Printf("🔍 URL breakdown - Protocol: file://, Path: %s, Working Dir: %s", relativePath, workingDir)
-	
+	// First try with direct absolute path (most reliable)
+	log.Printf("🔧 Creating migrator with direct path: %s", migrationsPath)
 	m, err = migrate.New(
-		migrationURL,
+		migrationsPath,
 		config.DatabaseURL,
 	)
 	
-	// If that fails, try with absolute path
+	// If that fails, try with relative path from working directory
 	if err != nil {
-		log.Printf("⚠️  Relative path failed (%v), trying absolute path: %s", err, migrationsPath)
+		log.Printf("⚠️  Direct path failed (%v), trying relative path", err)
+		workingDir, _ := os.Getwd()
+		relativePath := migrationsPath
+		if filepath.IsAbs(migrationsPath) {
+			// Convert absolute path to relative path from working directory
+			if strings.HasPrefix(migrationsPath, workingDir) {
+				relativePath = strings.TrimPrefix(migrationsPath, workingDir)
+				relativePath = strings.TrimPrefix(relativePath, "/")
+			} else {
+				// If path is not under working directory, use just the directory name
+				relativePath = filepath.Base(migrationsPath)
+			}
+		}
+		
+		migrationURL := fmt.Sprintf("file://%s", relativePath)
+		log.Printf("🔧 Trying relative URL: %s", migrationURL)
+		log.Printf("🔍 URL breakdown - Protocol: file://, Path: %s, Working Dir: %s", relativePath, workingDir)
+		
 		m, err = migrate.New(
-			migrationsPath,
+			migrationURL,
 			config.DatabaseURL,
 		)
 	}
 	
-	// If that also fails, try with file:// and absolute path
+	// If that also fails, try with file:// and absolute path as last resort
 	if err != nil {
-		log.Printf("⚠️  Absolute path failed (%v), trying file:// with absolute path", err)
+		log.Printf("⚠️  Relative path failed (%v), trying file:// with absolute path", err)
 		fileURL := fmt.Sprintf("file://%s", migrationsPath)
 		log.Printf("🔧 Trying file:// URL: %s", fileURL)
 		m, err = migrate.New(

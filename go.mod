@@ -2,7 +2,7 @@ module github.com/jarakey/jarakey-shared-middleware
 
 go 1.23
 
-// Version v1.2.4 - Fixed migration path resolution and golang-migrate compatibility
+// Version v1.2.5 - Fixed golang-migrate file reading issues and migration execution
 
 require (
 	github.com/gin-gonic/gin v1.9.1
