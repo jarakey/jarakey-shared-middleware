@@ -60,7 +60,7 @@ func buildDatabaseURL() string {
 func DefaultConfig() *Config {
 	return &Config{
 		DatabaseURL:    buildDatabaseURL(),
-		MigrationsPath: "infrastructure/scripts",
+		MigrationsPath: "/infrastructure/scripts",
 		Timeout:        30 * time.Second,
 		LogLevel:       "info",
 	}
@@ -93,11 +93,37 @@ func NewMigrator(config *Config) (*Migrator, error) {
 	migrationsPath = fixPathSlashes(migrationsPath)
 	log.Printf("🔧 Resolved migrations path: %s", migrationsPath)
 
-	// Validate migrations path exists
-	if _, err := os.Stat(migrationsPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("migrations path does not exist: %s", migrationsPath)
+	// Try multiple path strategies if the first one doesn't exist
+	pathsToTry := []string{
+		migrationsPath,
+		"/infrastructure/scripts",
+		"./infrastructure/scripts",
+		"infrastructure/scripts",
 	}
 	
+	// Debug: Print current working directory
+	if cwd, err := os.Getwd(); err == nil {
+		log.Printf("🔍 Current working directory: %s", cwd)
+	} else {
+		log.Printf("⚠️  Could not determine working directory: %v", err)
+	}
+	
+	var finalPath string
+	for _, path := range pathsToTry {
+		if _, err := os.Stat(path); err == nil {
+			finalPath = path
+			log.Printf("✅ Found migrations at: %s", finalPath)
+			break
+		}
+		log.Printf("🔍 Tried path: %s (not found)", path)
+	}
+	
+	if finalPath == "" {
+		return nil, fmt.Errorf("migrations path not found. Tried: %v", pathsToTry)
+	}
+	
+	migrationsPath = finalPath
+
 	// List files in the migrations path for debugging
 	files, err := os.ReadDir(migrationsPath)
 	if err != nil {

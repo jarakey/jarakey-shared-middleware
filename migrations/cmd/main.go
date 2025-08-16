@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"log"
-	"path/filepath"
 	"time"
 
 	"github.com/jarakey/jarakey-shared-middleware/migrations"
@@ -15,7 +14,7 @@ func main() {
 	var (
 		command       = flag.String("command", "up", "Migration command: up, down, force, version, status")
 		databaseURL   = flag.String("database", "", "Database URL (overrides environment variables)")
-		migrationsPath = flag.String("path", "infrastructure/scripts", "Path to migration files")
+		migrationsPath = flag.String("path", "/infrastructure/scripts", "Path to migration files")
 		timeout       = flag.Duration("timeout", 30*time.Second, "Migration timeout")
 		logLevel      = flag.String("log-level", "info", "Log level: debug, info, warn, error")
 		forceVersion  = flag.Int("force-version", 0, "Force migration version (for force command)")
@@ -49,16 +48,6 @@ func main() {
 		config.LogLevel = *logLevel
 	}
 	
-	// Ensure migrations path is absolute
-	if !filepath.IsAbs(config.MigrationsPath) {
-		absPath, err := filepath.Abs(config.MigrationsPath)
-		if err != nil {
-			log.Fatalf("❌ Failed to resolve migrations path: %v", err)
-		}
-		config.MigrationsPath = absPath
-		log.Printf("📁 Resolved migrations path to: %s", config.MigrationsPath)
-	}
-
 	// Create migrator instance
 	migrator, err := migrations.NewMigrator(config)
 	if err != nil {
