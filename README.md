@@ -421,6 +421,12 @@ export CIRCUIT_BREAKER_RESET_TIMEOUT="60s"
 - Backward compatibility maintained within major versions
 - Automated testing on each commit
 
+### Recent Changes (v1.2.0)
+- **Simplified Migration Tool**: Removed complex path auto-detection
+- **Explicit Path Arguments**: Always specify migration paths explicitly
+- **Docker-Friendly**: Consistent behavior across all container environments
+- **Better Error Handling**: Clear and predictable migration failures
+
 ### Contributing
 1. Fork the repository
 2. Create feature branch
@@ -458,7 +464,7 @@ export CIRCUIT_BREAKER_RESET_TIMEOUT="60s"
 
 ---
 
-**Version**: 1.0.0  
-**Go Version**: 1.21+ (JWT v5 compatible)  
+**Version**: 1.2.0  
+**Go Version**: 1.23+ (JWT v5 compatible)  
 **License**: MIT  
 **Maintainer**: Jarakey Team 
