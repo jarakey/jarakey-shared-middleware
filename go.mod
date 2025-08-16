@@ -2,12 +2,11 @@ module github.com/jarakey/jarakey-shared-middleware
 
 go 1.23
 
-// Version v1.2.5 - Fixed golang-migrate file reading issues and migration execution
+// Version v1.3.0 - Removed problematic migration package, simplified shared middleware
 
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/golang-migrate/migrate/v4 v4.17.0
 	github.com/google/uuid v1.5.0
 	github.com/prometheus/client_golang v1.17.0
 	github.com/stretchr/testify v1.8.4
