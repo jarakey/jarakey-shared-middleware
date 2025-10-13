@@ -77,7 +77,7 @@ func TestAuthRequired(t *testing.T) {
 func TestAuthRequiredValidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	// Create a valid JWT token
+	// Create a valid JWT token using the same secret as the middleware
 	user := &types.User{
 		ID:    "test-user-id",
 		Email: "test@example.com",
@@ -85,7 +85,9 @@ func TestAuthRequiredValidToken(t *testing.T) {
 		OrgID: "test-org-id",
 	}
 
-	jwtManager := utils.NewJWTManager("test-secret")
+	// Use the same secret that the middleware uses by default
+	secretKey := "super-secret-jwt-key-to-change-in-production"
+	jwtManager := utils.NewJWTManager(secretKey)
 	token, err := jwtManager.GenerateToken(user)
 	assert.NoError(t, err)
 
