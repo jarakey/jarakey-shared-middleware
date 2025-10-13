@@ -70,7 +70,7 @@ func AuthRequired() gin.HandlerFunc {
 		c.Set("user_email", claims.Email)
 		c.Set("user_role", claims.Role)
 		c.Set("org_id", claims.OrgID)
-		c.Set("user_permissions", []string{}) // Can be extended later
+		c.Set("user_permissions", claims.Permissions)
 
 		c.Next()
 	}

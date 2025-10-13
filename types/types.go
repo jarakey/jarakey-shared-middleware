@@ -139,12 +139,13 @@ type OAuthProvider struct {
 
 // JWTClaims represents JWT token claims
 type JWTClaims struct {
-	UserID string   `json:"user_id"`
-	Email  string   `json:"email"`
-	Role   UserRole `json:"role"`
-	OrgID  string   `json:"org_id"`
-	Exp    int64    `json:"exp"`
-	Iat    int64    `json:"iat"`
+	UserID      string   `json:"user_id"`
+	Email       string   `json:"email"`
+	Role        UserRole `json:"role"`
+	OrgID       string   `json:"org_id"`
+	Permissions []string `json:"permissions"`
+	Exp         int64    `json:"exp"`
+	Iat         int64    `json:"iat"`
 }
 
 // GetExpirationTime returns the expiration time as a NumericDate

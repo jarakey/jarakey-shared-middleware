@@ -24,12 +24,13 @@ func NewJWTManager(secretKey string) *JWTManager {
 // GenerateToken generates a new JWT token for a user
 func (j *JWTManager) GenerateToken(user *types.User) (string, error) {
 	claims := types.JWTClaims{
-		UserID: user.ID,
-		Email:  user.Email,
-		Role:   user.Role,
-		OrgID:  user.OrgID,
-		Exp:    time.Now().Add(24 * time.Hour).Unix(),
-		Iat:    time.Now().Unix(),
+		UserID:      user.ID,
+		Email:       user.Email,
+		Role:        user.Role,
+		OrgID:       user.OrgID,
+		Permissions: []string{}, // Can be extended later
+		Exp:         time.Now().Add(24 * time.Hour).Unix(),
+		Iat:         time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -76,12 +77,13 @@ func (j *JWTManager) RefreshToken(tokenString string) (string, error) {
 	}
 	
 	newClaims := types.JWTClaims{
-		UserID: claims.UserID,
-		Email:  claims.Email,
-		Role:   claims.Role,
-		OrgID:  claims.OrgID,
-		Exp:    newExp.Unix(),
-		Iat:    now.Unix(),
+		UserID:      claims.UserID,
+		Email:       claims.Email,
+		Role:        claims.Role,
+		OrgID:       claims.OrgID,
+		Permissions: claims.Permissions,
+		Exp:         newExp.Unix(),
+		Iat:         now.Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)

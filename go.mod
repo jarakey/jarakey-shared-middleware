@@ -2,7 +2,7 @@ module github.com/jarakey/jarakey-shared-middleware
 
 go 1.23
 
-// Version v1.2.6 - Added auth middleware functions (CORS, SecurityHeaders, AuthRequired)
+// Version v1.3.1 - Added auth middleware functions (CORS, SecurityHeaders, AuthRequired)
 
 require (
 	github.com/gin-gonic/gin v1.9.1
