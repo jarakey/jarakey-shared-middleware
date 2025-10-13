@@ -49,7 +49,7 @@ func AuthRequired() gin.HandlerFunc {
 		// Get JWT secret from environment
 		secretKey := os.Getenv("JWT_SECRET")
 		if secretKey == "" {
-			secretKey = "jarakey-super-secret-jwt-key-to-change-in-production"
+			secretKey = "super-secret-jwt-key-to-change-in-production"
 		}
 
 		// Validate token using shared JWT manager
