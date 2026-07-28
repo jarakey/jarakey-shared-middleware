@@ -1,0 +1,2 @@
+# Build artifacts — never commit compiled binaries to this public module
+bin/

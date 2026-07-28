@@ -13,6 +13,10 @@ import (
 
 // AuthRequired middleware checks if user is authenticated
 func AuthRequired() gin.HandlerFunc {
+	// Resolve the signing secret and build the JWT manager ONCE at setup, not per
+	// request: drops a getenv + allocation from the hot auth path and surfaces a
+	// misconfiguration warning a single time instead of on every request.
+	jwtManager := utils.NewJWTManager(resolveJWTSecret())
 	return func(c *gin.Context) {
 		// Get Authorization header
 		authHeader := c.GetHeader("Authorization")
@@ -46,14 +50,7 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		// Get JWT secret from environment
-		secretKey := os.Getenv("JWT_SECRET")
-		if secretKey == "" {
-			secretKey = "super-secret-jwt-key-to-change-in-production"
-		}
-
-		// Validate token using shared JWT manager
-		jwtManager := utils.NewJWTManager(secretKey)
+		// Validate token using the shared JWT manager (built once at setup)
 		claims, err := jwtManager.ValidateToken(token)
 		if err != nil {
 			log.Printf("JWT validation error: %v", err)
@@ -74,6 +71,20 @@ func AuthRequired() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// resolveJWTSecret returns the configured JWT signing secret, warning loudly (once, at
+// middleware setup) if it falls back to the built-in development default. That default is
+// public and forgeable, so it must never be used in a deployed environment.
+func resolveJWTSecret() string {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Printf("SECURITY WARNING: JWT_SECRET is not set — falling back to the built-in " +
+			"development secret. Set JWT_SECRET in every deployed environment; the default is " +
+			"public and allows token forgery.")
+		secret = "super-secret-jwt-key-to-change-in-production"
+	}
+	return secret
 }
 
 // RequireAdminPermission middleware checks if user has admin permissions
@@ -207,13 +218,27 @@ func SecurityHeaders() gin.HandlerFunc {
 	}
 }
 
-// CORS middleware handles CORS
+// CORS middleware handles CORS.
+//
+// Security: a wildcard Access-Control-Allow-Origin ('*') combined with
+// Access-Control-Allow-Credentials:true is rejected by browsers (Fetch spec) AND is unsafe.
+// So we reflect the caller's Origin when one is present — scoping the credentialed response
+// to that exact origin — and only fall back to '*' (without credentials) for origin-less
+// callers such as server-to-server requests or curl. Browser-facing origin allow-listing is
+// enforced at the gateway; downstream services that mount this sit behind it.
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		if origin := c.GetHeader("Origin"); origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.Header("Vary", "Origin") // response varies by Origin — keep caches correct
+		} else {
+			c.Header("Access-Control-Allow-Origin", "*")
+		}
+		// PATCH included so services adopting this shared CORS inherit support for PATCH
+		// routes (e.g. facility-reservation approve/reject) without a preflight regression.
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-Correlation-ID")
-		c.Header("Access-Control-Allow-Credentials", "true")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)

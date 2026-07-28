@@ -67,6 +67,17 @@ A comprehensive Go middleware package providing essential service communication 
   - Token refresh with extended expiration
   - Secure token signing with HMAC-SHA256
   - RFC 7519 compliant implementation
+  - `AuthRequired()` resolves the signing secret **once at setup** (not per request) and logs
+    a `SECURITY WARNING` if `JWT_SECRET` is unset and it falls back to the public dev default —
+    set `JWT_SECRET` in every deployed environment.
+
+### 6b. CORS (`middleware/CORS`)
+- Reflects the request `Origin` (with `Vary: Origin`) and allows credentials when an `Origin`
+  is present; falls back to `Access-Control-Allow-Origin: *` **without** credentials for
+  origin-less callers. A wildcard origin combined with `Allow-Credentials: true` is spec-invalid
+  (browsers reject it) and unsafe, so the two are never paired.
+- `Access-Control-Allow-Methods` includes `PATCH` — a missing method silently breaks that
+  method's browser preflight. Browser-facing origin allow-listing is enforced at the gateway.
 
 ### 7. Cryptographic Utilities
 - **Location**: `utils/crypto.go`

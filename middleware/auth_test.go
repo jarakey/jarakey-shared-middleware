@@ -317,18 +317,29 @@ func TestCORS(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"message": "options"})
 	})
 
-	// Test GET request
+	// Origin-less caller (server-to-server / curl): permissive '*', but NO credentials —
+	// a wildcard origin with credentials is spec-invalid and unsafe.
 	req, _ := http.NewRequest("GET", "/test", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
-	assert.Equal(t, "GET, POST, PUT, DELETE, OPTIONS", w.Header().Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "GET, POST, PUT, DELETE, PATCH, OPTIONS", w.Header().Get("Access-Control-Allow-Methods"))
 	assert.Equal(t, "Content-Type, Authorization, X-Requested-With, X-Correlation-ID", w.Header().Get("Access-Control-Allow-Headers"))
-	assert.Equal(t, "true", w.Header().Get("Access-Control-Allow-Credentials"))
+	assert.Empty(t, w.Header().Get("Access-Control-Allow-Credentials"), "no credentials with wildcard origin")
 
-	// Test OPTIONS request
+	// Browser caller with an Origin: reflect it and allow credentials (spec-compliant).
+	req, _ = http.NewRequest("GET", "/test", nil)
+	req.Header.Set("Origin", "https://app.jarakey.com")
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, "https://app.jarakey.com", w.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "true", w.Header().Get("Access-Control-Allow-Credentials"))
+	assert.Equal(t, "Origin", w.Header().Get("Vary"))
+
+	// Test OPTIONS request (preflight → 204)
 	req, _ = http.NewRequest("OPTIONS", "/test", nil)
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)

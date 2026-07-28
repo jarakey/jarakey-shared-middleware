@@ -1,0 +1,17 @@
+name: PR Name Linter
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]        # fires when @claude is mentioned in a PR comment
+
+jobs:
+  lint-pr:
+    uses: jarakey/reusable-ci/.github/workflows/pr-linter.yml@main
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    secrets: inherit
